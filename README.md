@@ -209,7 +209,9 @@ NEXT_PHASE.pdf            plan for the next version of the robot
 
 **Firefighting: line following, flame detection, aiming and water**
 
-<div align="center"><a href="https://www.youtube.com/shorts/gP3Se-EKioY"><img src="docs/video-thumbnail.jpg" width="700" alt="Firefighting robot demo video"></a></div>
+https://github.com/user-attachments/assets/553fcfee-71d8-45a7-b270-38277c7fac2c
+
+Also on [YouTube](https://www.youtube.com/shorts/gP3Se-EKioY).
 
 The earlier videos of manual driving and line following are in
 [esp32cam-rc-car](https://github.com/AfonsoTex/esp32cam-rc-car).
