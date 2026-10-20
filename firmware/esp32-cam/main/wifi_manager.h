@@ -2,7 +2,7 @@
 // Manages saved Wi-Fi networks and access point configuration.
 void setup_flash_memory();
 void dump_nvs_to_serial();
-void Write_to_flash(char *ssid, char *password);
+void save_wifi_credentials(char *ssid, char *password);
 void enable_access_point();
 void loop_config_mode();
 

@@ -7,24 +7,11 @@ import cv2
 import numpy as np
 
 
-ENABLE_AUGMENTATION = True
-
-# Half of the images are mirrored; each flame box is mirrored with its image.
-FLIP_PROBABILITY = 0.5
-
-# Small rotations simulate a tilted camera; avoid unrealistic upside-down flames.
-ROTATION_PROBABILITY = 0.3
-MAX_ROTATION_DEGREES = 5.0
-
-# A small crop changes position and zoom. It must keep every flame box intact.
-CROP_PROBABILITY = 0.5
-MIN_CROP_SCALE = 0.90
-
-# Keep lighting changes small so flames still resemble the camera recordings.
-MIN_BRIGHTNESS = 0.90
-MAX_BRIGHTNESS = 1.10
-MIN_CONTRAST = 0.90
-MAX_CONTRAST = 1.10
+from settings import (
+    ENABLE_AUGMENTATION, FLIP_PROBABILITY, ROTATION_PROBABILITY,
+    MAX_ROTATION_DEGREES, CROP_PROBABILITY, MIN_CROP_SCALE,
+    MIN_BRIGHTNESS, MAX_BRIGHTNESS, MIN_CONTRAST, MAX_CONTRAST,
+)
 
 
 def rotate_without_cutting_flames(image, boxes, angle):

@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from augmentation import augment_image
+from settings import BATCH_SIZE
 
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,9 +25,6 @@ def cache_paths(split):
 IMAGE_SIZE = 180
 
 GRID_SIZE = IMAGE_SIZE // 4
-
-BATCH_SIZE = 32
-
 
 def read_split(images_dir, labels_dir, fire_class):
     names = []
@@ -100,15 +98,13 @@ def report_split(name, samples):
     print("  no fire   ", negatives)
 
 
-
-
 def encode_boxes(boxes):
 # Transforms the fire information from [(x, y, width, height), ...]
 # into the same 5x45x45 format predicted by the model.
 # Everything stays zero except occupied cells, e.g.:
 # cell (10,20) -> [1, x, y, w, h]
 # cell (44,44) -> [0, 0, 0, 0, 0]
-# necessary for training so that the prediction is the same as the label
+# Training compares predictions with targets encoded in this grid layout.
     
     if len(boxes) > GRID_SIZE * GRID_SIZE:
         raise ValueError("More boxes than grid cells")
@@ -117,7 +113,6 @@ def encode_boxes(boxes):
     grid = torch.zeros(5, GRID_SIZE, GRID_SIZE)
 
     for x, y, width, height in boxes:
-        #boxes only contain the information of image that contain fire
 
         column = min(int(x * GRID_SIZE), GRID_SIZE - 1)
         row = min(int(y * GRID_SIZE), GRID_SIZE - 1)
@@ -126,7 +121,6 @@ def encode_boxes(boxes):
 
 
         grid[0, row, column] = 1
-        #boxes only contain the information of image that contain fire
 
         # Store x/y relative to this cell's center; sizes remain fractions of the image.
         grid[1, row, column] = x * GRID_SIZE - column - 0.5

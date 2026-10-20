@@ -2,39 +2,26 @@
 # Saves the model whenever its validation score improves.
 # Automatically updates the cache after new annotated sessions enter the dataset.
 
+import argparse
 import os
+import shutil
 import time
 
 import torch
 
 from data import GRID_SIZE, IMAGE_SIZE, build_loader, PROJECT_DIR
 from model import FireNet
+from detection_filter import remove_duplicate_boxes
 
+
+# Common settings are edited in firmware/raspberry/settings.h.
+from settings import (
+    POSITION_WEIGHT, COUNT_WEIGHT, FIRE_WEIGHT, NO_FIRE_WEIGHT,
+    CONFIDENCE_THRESHOLD, MAX_DISTANCE, MEASURE_TRAIN, EPOCHS,
+    LEARNING_RATE, LEARNING_RATE_PATIENCE, MIN_LEARNING_RATE,
+)
 
 CHECKPOINT = os.path.join(PROJECT_DIR, "firenet_grid.pt")
-
-POSITION_WEIGHT = 1
-
-COUNT_WEIGHT = 3
-
-FIRE_WEIGHT = 1
-
-NO_FIRE_WEIGHT = 2
-
-CONFIDENCE_THRESHOLD = 0.7
-
-MAX_DISTANCE = 10
-
-MEASURE_TRAIN = False
-
-# Starting learning rate for each new run, including when loading saved weights.
-LEARNING_RATE = 0.001
-
-# Halve the current learning rate after this many epochs without a new best score.
-LEARNING_RATE_PATIENCE = 5
-
-# Stop reducing after five halvings; changing the base rate also changes this limit.
-MIN_LEARNING_RATE = LEARNING_RATE / 32
 
 
 def get_boxes(grid, prediction=True):
@@ -67,7 +54,18 @@ def get_boxes(grid, prediction=True):
         if not (0 <= x <= 1 and 0 <= y <= 1 and 0 <= width <= 1 and 0 <= height <= 1):
             continue
 
-        boxes.append((x, y, width, height))
+        if prediction:
+            confidence = presence[row, column].item()
+            boxes.append((x, y, width, height, confidence))
+        else:
+            boxes.append((x, y, width, height))
+
+    # Filter predictions only. Every annotated flame must remain in the ground truth.
+    if prediction:
+        filtered_boxes = remove_duplicate_boxes(boxes)
+        boxes = []
+        for x, y, width, height, confidence in filtered_boxes:
+            boxes.append((x, y, width, height))
 
     return boxes
 
@@ -162,6 +160,11 @@ def report(name, results):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(description="Train FireNet on the local dataset.")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Start with new weights and back up the existing checkpoint.")
+    args = parser.parse_args()
+
     from build_cache import ensure_cache
     ensure_cache()
 
@@ -179,22 +182,34 @@ if __name__ == "__main__":
 
     best_score = -1.0
 
-    if os.path.exists(CHECKPOINT):
+    if args.fresh:
+        if os.path.exists(CHECKPOINT):
+            backup_directory = os.path.join(PROJECT_DIR, "results", "model_backups")
+            os.makedirs(backup_directory, exist_ok=True)
+            backup_path = os.path.join(backup_directory, f"firenet_grid_{time.time_ns()}.pt")
+            shutil.copy2(CHECKPOINT, backup_path)
+            print("Previous checkpoint backed up to", backup_path)
+        print("Starting from scratch: no saved weights loaded.")
+    elif os.path.exists(CHECKPOINT):
         checkpoint = torch.load(CHECKPOINT, map_location="cpu", weights_only=True)
         model.load_state_dict(checkpoint["weights"])
         print("Checking saved model on validation data...")
         best_score = evaluate(model, valid_loader)[4]
 
         print(f"Resuming best model. Score: {best_score:.2f}%")
+        if best_score == 0:
+            print("The loaded model scores zero. Use --fresh to train with new weights.")
+    else:
+        print("Starting from scratch: no checkpoint found.")
 
     total_steps = len(train_loader)
 
     learning_rate = LEARNING_RATE
     epochs_without_improvement = 0
 
-    for epoch in range(30):
+    for epoch in range(EPOCHS):
 
-        # Python counts from 0; use 1..30 to match the epoch numbers shown below.
+        # Python counts from 0; display epoch numbers starting at 1.
         epoch_number = epoch + 1
 
         print(f"epoch {epoch_number:2d}  learning rate: {learning_rate:g}")

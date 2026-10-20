@@ -5,10 +5,10 @@
 Camera::Camera() {}
 
 Camera::~Camera() {
-    libertar();
+    release();
 }
 
-bool Camera::abrir(int index) {
+bool Camera::open(int index) {
     // Capture through libcamera and deliver BGR frames to OpenCV.
     const std::string pipeline =
     "libcamerasrc ! "
@@ -27,16 +27,16 @@ bool Camera::abrir(int index) {
     return true;
 }
 
-bool Camera::lerFrame(cv::Mat& frame) {
+bool Camera::readFrame(cv::Mat& frame) {
     if (!cap.isOpened()) return false;
 
-    cv::Mat frameOriginal;
-    cap >> frameOriginal; // Capture a BGR frame from GStreamer.
+    cv::Mat capturedFrame;
+    cap >> capturedFrame; // Capture a BGR frame from GStreamer.
 
-    if (frameOriginal.empty()) return false;
+    if (capturedFrame.empty()) return false;
 
     // Keep the captured resolution for display and correct the camera orientation.
-    cv::rotate(frameOriginal, frame, cv::ROTATE_180);
+    cv::rotate(capturedFrame, frame, cv::ROTATE_180);
 
     // Convert BGR to RGB for the model.
     cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
@@ -44,7 +44,7 @@ bool Camera::lerFrame(cv::Mat& frame) {
     return true;
 }
 
-void Camera::libertar() {
+void Camera::release() {
     if (cap.isOpened()) {
         cap.release();
     }

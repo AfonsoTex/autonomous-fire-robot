@@ -12,8 +12,8 @@ class Camera{
         Camera();
         ~Camera();
 
-        bool abrir(int index = 0);
-        bool lerFrame(cv::Mat& frame);
-        void libertar();
+        bool open(int index = 0);
+        bool readFrame(cv::Mat& frame);
+        void release();
 };
 #endif

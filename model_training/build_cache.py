@@ -19,10 +19,7 @@ from data import IMAGE_SIZE, build_split, CACHE_DIR
 # Training then reads pixels that are already decompressed instead of running
 # the JPEG decoder again in every epoch.
 #
-# Run once, from this folder:   python build_cache.py
-# Run it again only if the dataset changes or IMAGE_SIZE changes.
-
-
+# train.py checks cache freshness automatically; run this script to force a rebuild.
 
 
 def cache_paths(split):
@@ -61,8 +58,7 @@ def build_cache(split):
 
     for index, (image_path, sample_boxes) in enumerate(samples):
 
-        # These three lines are the ones currently in FireDataset.__getitem__.
-        # Here they run once per image instead of once per image per epoch.
+        # Cache RGB pixels at the input resolution once, rather than resizing every epoch.
         image = cv2.imread(image_path)
 
         if image is None:

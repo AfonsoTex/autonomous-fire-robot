@@ -3,4 +3,4 @@
 #include "esp_camera.h"
 
 void setup_camera();
-void task_camara(void *parameter);
+void camera_stream_task(void *parameter);

@@ -2,14 +2,14 @@
 #include "network_state.h"
 #include <Arduino.h>
 
-// ── OV2640 camera pin map (AI-Thinker ESP32-CAM)
+// OV2640 camera pin map (AI-Thinker ESP32-CAM)
 // The ESP32-CAM board carries the ESP32-S module and the OV2640 sensor
 // wired together on the same PCB.
 // These pin numbers describe how the OV2640 sensor is physically wired
 // to the ESP32 on this board. The wiring is fixed in the PCB and cannot
 // be changed. The camera driver cannot detect it, so it must be told.
-// Wrong number here = driver talks to the wrong pin = camera never responds.
-// Source: ESP32_CAM_V1.6 schematic (docs/ESP32_CAM_V1_6.pdf).
+// An incorrect pin map can prevent capture.
+// Source: ESP32_CAM_V1.6 schematic (docs/ESP32_CAM_V1.6.pdf).
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
 #define XCLK_GPIO_NUM      0
@@ -29,14 +29,14 @@
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-// clock frequency, pixel format, frame size, number of frame buffers.
+// Camera clock, pixel format, frame dimensions and buffer configuration.
 // Declared empty here, filled field by field in setup_camera(), then handed
 // to esp_camera_init(&config).
 camera_config_t config;
 
 void setup_camera() {
-    // ── Camera configuration: fill the config struct field by field ───
-    // Pin map (source: ESP32_CAM_V1.6 schematic, docs/ESP32_CAM_V1_6.pdf)
+    // Camera configuration: fill the config struct field by field
+    // Pin map (source: ESP32_CAM_V1.6 schematic, docs/ESP32_CAM_V1.6.pdf)
     config.pin_pwdn     = PWDN_GPIO_NUM;
     config.pin_reset    = RESET_GPIO_NUM;
     config.pin_xclk     = XCLK_GPIO_NUM;
@@ -54,10 +54,7 @@ void setup_camera() {
     config.pin_href  = HREF_GPIO_NUM;
     config.pin_pclk  = PCLK_GPIO_NUM;
 
-    config.xclk_freq_hz = 20000000;      // 20 MHz clock the ESP32 generates and
-                                         // feeds to the sensor (it has no
-                                         // oscillator of its own). 20 MHz is the
-                                         // OV2640 datasheet recommended value.
+    config.xclk_freq_hz = 20000000;      // Supply the sensor's external 20 MHz reference clock.
     config.ledc_timer   = LEDC_TIMER_1;  // LEDC timer+channel used to produce that
     config.ledc_channel = LEDC_CHANNEL_2;// XCLK. Channel 2, so it does not clash
                                          // with channels 0/1 driving the motors.
@@ -65,51 +62,18 @@ void setup_camera() {
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 30;           // 0=best/largest, 63=worst; higher = smaller frame
     config.fb_count     = 2;              // two frame buffers: capture one while sending the other
-    config.fb_location  = CAMERA_FB_IN_PSRAM; // frames go in PSRAM; too big for internal RAM
+    config.fb_location  = CAMERA_FB_IN_PSRAM; // Keep JPEG buffers in external RAM.
     config.grab_mode    = CAMERA_GRAB_WHEN_EMPTY; // fetch a new frame only when a buffer is free
 
-    esp_err_t err_cam = esp_camera_init(&config);
-    if (err_cam != ESP_OK) {
-        Serial.printf("Camera init failed: 0x%x\n", err_cam);
+    esp_err_t cameraError = esp_camera_init(&config);
+    if (cameraError != ESP_OK) {
+        Serial.printf("Camera init failed: 0x%x\n", cameraError);
     } else {
         Serial.println("Camera OK");
     }
 }
 
-/*void task_camara(void *parameter) {
-    Serial.printf("Camera task running on Core %d\n", xPortGetCoreID());
-
-    while (true) {
-        if (!clienteVideo.connected()) {
-            Serial.println("[VIDEO] Trying to connect to PC...");
-            if (clienteVideo.connect(destino, VIDEO_PORT)) {
-                Serial.println("[VIDEO] Connected!");
-            } else {
-                Serial.println("[VIDEO] Connection failed");
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
-                continue;
-            }
-        }
-
-        camera_fb_t *fb = esp_camera_fb_get();
-        if (fb == NULL) {
-            Serial.println("[VIDEO] Frame capture failed");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-            continue;
-        }
-
-        uint32_t tamanho = fb->len;
-        clienteVideo.write((uint8_t*)&tamanho, 4);
-        clienteVideo.write(fb->buf, fb->len);
-
-        esp_camera_fb_return(fb);
-
-        vTaskDelay(1 / portTICK_PERIOD_MS);
-    }
-}
-*/
-
-void task_camara(void *parameter) {
+void camera_stream_task(void *parameter) {
     // Initializes the UDP socket on the specified port to start sending camera frames
     udpVideo.begin(VIDEO_PORT);
 
@@ -127,7 +91,7 @@ void task_camara(void *parameter) {
         // Check if the frame was successfully captured
         if (fb != NULL) {
             // Begin building a UDP packet targeted at the destination IP and video port
-            udpVideo.beginPacket(destino, VIDEO_PORT);
+            udpVideo.beginPacket(videoDestination, VIDEO_PORT);
 
             // Write the raw JPEG buffer data into the UDP packet stream
             udpVideo.write(fb->buf, fb->len);
@@ -139,7 +103,7 @@ void task_camara(void *parameter) {
             esp_camera_fb_return(fb);
         }
 
-        // Delay task execution to maintain a target rate of approximately 30 frames per second
+        // Wait between frames; capture and transmission add to this 33 ms interval.
         vTaskDelay(33 / portTICK_PERIOD_MS);
     }
 }

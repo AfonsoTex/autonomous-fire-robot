@@ -1,26 +1,21 @@
 import socket
+import select
 import cv2
 import numpy as np
 import pygame
 import time
 import datetime
 import threading    
-
-# ==========================================
 # NETWORK CONFIGURATION
-# ==========================================
 HOST = '0.0.0.0'      # listen on ANY of this PC's network interfaces (not just one)
 PORT_CONTROL = 1883   # UDP port for control: MOV/DIR commands and heartbeat
 PORT_VIDEO = 1884     # UDP port for the camera's JPEG frames
+HEARTBEAT_SECONDS = 0.2  # Keep the connection alive without reissuing unchanged movement.
 # (IP picks the machine; the port picks which service on it — like building + apartment)
-
-# ==========================================
 # LINE FOLLOWER AND VISION PARAMETERS
 # Tune these to your own car, floor, and tape. Every value is a starting
 # point, not a universal setting — see the note on the battery below.
-# ==========================================
-
-GAIN = 2                  # steering strength.
+GAIN = 2.5                  # steering strength.
                           # Not turning enough / drifting off the line -> raise it.
                           # Snaking side to side -> lower it.
 
@@ -28,13 +23,13 @@ DEADBAND = 8              # dead zone (pixels) around the centre where error is 
                           # so the car doesn't twitch on a straight from tiny noise.
                           # Twitchy on straights -> raise it.
 
-BASE_SPEED = 0.45         # normal forward speed on straights.
+BASE_SPEED = 0.53        # normal forward speed on straights.
 
 MAX_CURVE_SPEED = 0.6     # max speed in curves, to give the outer side torque to turn.
 
 CURVE_THRESHOLD = 0.70    # steering level above which the car starts adding curve speed.
 
-REVERSE_SPEED = 0.49      # speed while reversing during recovery.
+REVERSE_SPEED = 0.55      # speed while reversing during recovery.
 
 
 # --- IMAGE PROCESSING ---
@@ -47,17 +42,13 @@ MAX_WIDTH_PCT = 0.65      # max contour width (% of image); wider than this is t
 
 MIN_AREA = 600            # min contour area (pixels) to count as the line;
                           # smaller blobs are noise. Line rejected when far/thin -> lower it.
-
-# ==========================================
 # SHARED STATE (global variables passed between threads)
-# ==========================================
 autonomous_mode = False  # mode switch: False = manual (gamepad), True = autonomous
 auto_direction = 0.0     # steering the vision computes (-1..1), written by the
                          # processing thread and read by main to send to the ESP
 state = "FOLLOW"         # state machine: "FOLLOW" or "REVERSE"
 auto_move = 0.0          # speed the vision commands (-1..1); negative = reverse
                          # (needed so recovery can drive the car backwards)
-
 
 
 # Two independent hand-offs between threads, so two separate locks:
@@ -79,14 +70,12 @@ def normalize(value):
     # Map a -1..1 value to 0..1: -1 -> 0, 0 -> 0.5, 1 -> 1.
     # Used when something needs a 0..1 scale from a value that lives in -1..1.
     return (value + 1) / 2
-    #example: convert xbox commands to velocity
-
 
 
 def video_rx_thread():
-    global latest_frame  #otherwise creates local variables; we need global for thread communication
+    global latest_frame  # Publish frames to the processing thread.
 
-    server_video = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Added: Creates a UDP socket to receive the camera's video stream
+    server_video = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Receive the camera's UDP video packets.
     server_video.bind((HOST, PORT_VIDEO))  # Binds the socket to all local interfaces on the video port
     
     print("Waiting for video on UDP port 1884 (Accumulation Mode)...")
@@ -126,19 +115,13 @@ def video_rx_thread():
                 # None means the JPEG was corrupt (e.g. a lost UDP packet) — skip it.
                 if frame is not None:
 
-                # Hand the frame to the processing thread, under the lock.
-                # Safely passes a deep copy of the frame to the processing thread. 
-                # Without .copy(), both threads would share the exact same memory reference, 
-                # causing data corruption if the video thread overwrites the frame while the 
-                # processing thread is reading it.
+                    # Publish an independent image under the lock.
                     with frame_lock:
                         latest_frame = frame.copy()
-                    #the processing thread will handle the display
+                    # The processing thread handles display.
 
-                # New bytearray, not .clear(): NumPy above points at these same
-                # bytes. .clear() would wipe the bytes NumPy still needs (garbage).
-                # Reassigning leaves the old buffer intact for NumPy and starts a
-                # fresh one here — the old one lives on until NumPy is done with it.
+                # NumPy still holds a view of the old buffer. Allocate a new buffer
+                # instead of resizing the bytearray while that view exists.
                 frame_buffer = bytearray()
 
         except Exception as e:
@@ -146,16 +129,13 @@ def video_rx_thread():
             break
 
     server_video.close()
-
-# ==========================================
 # THREAD 2: OPENCV PROCESSING
-# ==========================================
 def image_processing_thread():
     global auto_direction, state, auto_move, latest_frame
     
     print(f"[{timestamp()}] Image Processing Thread Active")
 
-    last_error = 0.0  # Initialized for tracking the previous error in control algorithms, even if not currently in active use
+    last_error = 0.0  # Last steering error, used to choose a recovery direction.
     last_cx = 320     # Stores the last known X coordinate of the line; initialized to 320 (half of the 640 resolution width)
 
     while True:
@@ -242,7 +222,7 @@ def image_processing_thread():
             distance = abs(cx_temp - last_cx)
 
             # Reject the contour if it appears more than 150 pixels away from the last known location,
-            # as it is physically impossible for the true line to jump that far within a single frame.
+            # to reduce switches to unrelated contours; rapid motion can also exceed this limit.
             if distance > 150:
                 continue
 
@@ -250,10 +230,7 @@ def image_processing_thread():
             if distance < min_distance:
                 min_distance = distance
                 line_contour = c
-
-        # ==========================================
         # MOVEMENT LOGIC AND RECOVERY MODE
-        # ==========================================
         if line_contour is not None:
             state = "FOLLOW"
             
@@ -329,10 +306,7 @@ def image_processing_thread():
 
     # Release all OpenCV GUI windows upon exiting the thread
     cv2.destroyAllWindows()
-
-# ==========================================
 # MAIN: CONTROL SERVER AND PYGAME INTERFACE
-# ==========================================
 def main():
     global autonomous_mode, auto_direction, auto_move
     
@@ -353,8 +327,6 @@ def main():
     server_control.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
     server_control.bind((HOST, PORT_CONTROL))  # Bind the socket to all interfaces on the control port
-
-
 
 
     # Set a 2.0-second timeout so recvfrom() periodically returns control to the
@@ -379,7 +351,7 @@ def main():
                         joystick = None
                         print(f"[{timestamp()}] Controller disconnected!")
 
-            # Wait for an incoming client connection with a 2-second timeout
+            # Wait for a UDP discovery packet, with a 2-second timeout.
             try:
                 
                 print(f"[{timestamp()}] Waiting for the first UDP packet from ESP32 on port {PORT_CONTROL}...")
@@ -390,11 +362,19 @@ def main():
                 continue
 
             previous_command = None
-            last_sent_time = time.time()
+            last_sent_time = time.monotonic()
 
             # Active connection loop for handling game controller inputs
             try:
                 while True:
+                    # After startup or a network timeout, the ESP may have no stored
+                    # movement. Send our current command once when it asks for it.
+                    readable, _, _ = select.select([server_control], [], [], 0)
+                    if readable:
+                        message, sender = server_control.recvfrom(1024)
+                        if sender == esp_addr and message.strip() in (b"SEND_MOV", b"HELLO"):
+                            previous_command = None
+
                     for event in pygame.event.get():
                         # Toggle autonomous/manual mode when button 0 is pressed
                         if event.type == pygame.JOYBUTTONDOWN and event.button == 0:
@@ -403,9 +383,7 @@ def main():
                             print(f"\n>>> [{timestamp()}] MODE CHANGED TO: {mode_str} <<<\n")
 
                     if autonomous_mode:
-                        # --------------------------------------------------
                         # AUTONOMOUS MODE CONTROL
-                        # --------------------------------------------------
                         # Retrieve current direction and move commands safely from shared threads using the state lock
                         with state_lock:
                             direction = auto_direction
@@ -427,9 +405,7 @@ def main():
                                 # Otherwise, maintain standard baseline cruising speed
                                 move = BASE_SPEED
                     else:
-                        # --------------------------------------------------
                         # MANUAL MODE CONTROL (GAMEPAD / JOYSTICK)
-                        # --------------------------------------------------
                         if joystick is not None:
                             pygame.event.pump()  # Refresh internal joystick states
                             
@@ -454,7 +430,7 @@ def main():
                             move = 0.0
                             direction = 0.0
 
-                    # Format the final telemetry command string to send to the robot over UDP
+                    # Format the movement command for the ESP32.
                     command = f"MOV:{move:.2f},DIR:{direction:.2f}\n"
 
                     try:
@@ -463,12 +439,13 @@ def main():
                             print(f"[{'AUTO' if autonomous_mode else 'MANUAL'}] Sending: {command.strip()}")
                             server_control.sendto(command.encode(), esp_addr)
                             previous_command = command
-                            last_sent_time = time.time()
+                            last_sent_time = time.monotonic()
 
-                        elif time.time() - last_sent_time > 0.2:
-                            # Send a heartbeat over UDP.
+                        elif time.monotonic() - last_sent_time >= HEARTBEAT_SECONDS:
+                            # The ESP remembers the latest MOV and resumes it after
+                            # Raspberry permission returns, while these heartbeats stay fresh.
                             server_control.sendto(b'HB\n', esp_addr)
-                            last_sent_time = time.time()
+                            last_sent_time = time.monotonic()
 
                     except OSError as e:
                         print(f"[{timestamp()}] Error in UDP transmission: {e}")

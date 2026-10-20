@@ -4,17 +4,15 @@
 #include <fstream>
 #include <string>
 
-// static: internal linkage. The name PWMCHIP only exists inside servos.cpp.
-// const: does not change after it is created.
 // On the current Pi configuration, pwmchip1 is PWM0 (device 1f00098000.pwm).
 // GPIO18 uses channel 2 and GPIO19 uses channel 3. pwmchip0 belongs to the fan.
 // Check this path again after reboot or PWM configuration changes.
 static const std::string PWMCHIP = "/sys/class/pwm/pwmchip1";
 
-bool inicializarServos(int pan_us, int tilt_us)
+bool initializeServos(int pan_us, int tilt_us)
 {
-    if (pan_us < PULSO_MIN_US || pan_us > PULSO_MAX_US ||
-        tilt_us < PULSO_MIN_US || tilt_us > PULSO_MAX_US) return false;
+    if (pan_us < MIN_PULSE_US || pan_us > MAX_PULSE_US ||
+        tilt_us < MIN_PULSE_US || tilt_us > MAX_PULSE_US) return false;
     if (!std::filesystem::exists(PWMCHIP + "/pwm2")) {
         std::ofstream f(PWMCHIP + "/export");
         if (!f) {
@@ -123,7 +121,7 @@ bool inicializarServos(int pan_us, int tilt_us)
     return true;
 }
 
-bool definirPulso(int gpio, int pulso_us)
+bool setServoPulse(int gpio, int pulse_us)
 {
     // Accepts only the pins selected in servos.h.
     if (gpio != GPIO_PAN and gpio != GPIO_TILT) {
@@ -131,25 +129,25 @@ bool definirPulso(int gpio, int pulso_us)
     }
 
     // Invalid requests leave any existing pulse signal unchanged.
-    if (pulso_us < PULSO_MIN_US or pulso_us > PULSO_MAX_US) {
+    if (pulse_us < MIN_PULSE_US or pulse_us > MAX_PULSE_US) {
         return false;
     }
 
     // Each GPIO pin is wired by the hardware to one PWM channel.
-    std::string canal;
+    std::string channel;
     if (gpio == GPIO_PAN) {
-        canal = "/pwm2";
+        channel = "/pwm2";
     } else if (gpio == GPIO_TILT) {
-        canal = "/pwm3";
+        channel = "/pwm3";
     }
 
-    std::ofstream f(PWMCHIP + canal + "/duty_cycle");
+    std::ofstream f(PWMCHIP + channel + "/duty_cycle");
     if (!f) {
         return false;
     }
 
     // Converts microseconds to nanoseconds, the unit sysfs accepts.
-    f << pulso_us * 1000;
+    f << pulse_us * 1000;
     f.flush();
     if (!f) {
         return false;
@@ -158,7 +156,7 @@ bool definirPulso(int gpio, int pulso_us)
     return true;
 }
 
-void terminarServos()
+void shutdownServos()
 {
     // Attempt both channels even if one cannot be disabled.
     for (const char* channel : {"/pwm2/enable", "/pwm3/enable"}) {
