@@ -1,7 +1,7 @@
 # ESP32-CAM and Raspberry Pi Firefighting Robot
 
 <div align="center">
-  <img src="docs/robot.jpg" width="720" alt="The complete firefighting robot"><br>
+  <img src="docs/photos/robot.jpg" width="720" alt="The complete firefighting robot"><br>
   <em>The complete robot: ESP32-CAM, Raspberry Pi 5, pan/tilt camera and water nozzle.</em>
 </div>
 
@@ -19,6 +19,15 @@ This repository is the firefighting phase. What comes next is in [NEXT_PHASE.pdf
 
 This is an experimental candle-scale prototype. Detection, aiming and water reach
 depend on the scene and the mechanical assembly; it is not a fire-safety device.
+
+## Technical report
+
+### [Read the full technical report (PDF)](docs/Technical_Report.pdf)
+
+The project's engineering report brings together the design, electronics,
+software, flame detection and aiming system.
+
+[Browse supporting documentation](docs/README.md) · [Next phase](NEXT_PHASE.pdf)
 
 ## What it does
 
@@ -40,7 +49,7 @@ target → aim → spray → return the camera home → let the car move again.
 | **PC (offline)** | Annotating data, training and exporting FireNet | [`model_training/`](model_training/README.md) |
 
 <div align="center">
-  <img src="docs/architecture.svg" width="860" alt="How the PC, ESP32-CAM and Raspberry Pi work together">
+  <img src="docs/diagrams/architecture.svg" width="860" alt="How the PC, ESP32-CAM and Raspberry Pi work together">
 </div>
 
 The ESP32 sends its camera to the PC; the PC decides how to drive and sends the
@@ -201,7 +210,7 @@ firmware/raspberry/       FireNet inference, browser video, aiming, pump, settin
 model_training/           FireNet annotation, training, evaluation and export
 server/                   PC server: video + gamepad control + line following
 hardware/                 wiring diagrams and 3D chassis (STL to print, F3D source)
-docs/                     photos and datasheets
+docs/                     technical report, datasheets, photos and diagrams
 NEXT_PHASE.pdf            plan for the next version of the robot
 ```
 

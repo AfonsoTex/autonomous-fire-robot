@@ -9,7 +9,7 @@
 // to the ESP32 on this board. The wiring is fixed in the PCB and cannot
 // be changed. The camera driver cannot detect it, so it must be told.
 // An incorrect pin map can prevent capture.
-// Source: ESP32_CAM_V1.6 schematic (docs/ESP32_CAM_V1.6.pdf).
+// Source: ESP32_CAM_V1.6 schematic (docs/datasheets/ESP32_CAM_V1.6.pdf).
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
 #define XCLK_GPIO_NUM      0
@@ -36,7 +36,7 @@ camera_config_t config;
 
 void setup_camera() {
     // Camera configuration: fill the config struct field by field
-    // Pin map (source: ESP32_CAM_V1.6 schematic, docs/ESP32_CAM_V1.6.pdf)
+    // Pin map (source: ESP32_CAM_V1.6 schematic, docs/datasheets/ESP32_CAM_V1.6.pdf)
     config.pin_pwdn     = PWDN_GPIO_NUM;
     config.pin_reset    = RESET_GPIO_NUM;
     config.pin_xclk     = XCLK_GPIO_NUM;
