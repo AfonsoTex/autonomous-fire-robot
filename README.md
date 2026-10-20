@@ -1,7 +1,7 @@
 # ESP32-CAM and Raspberry Pi Firefighting Robot
 
 <div align="center">
-  <img src="docs/robot.jpg" width="420" alt="The complete firefighting robot"><br>
+  <img src="docs/robot.jpg" width="600" alt="The complete firefighting robot"><br>
   <em>The complete robot: ESP32-CAM, Raspberry Pi 5, pan/tilt camera and water nozzle.</em>
 </div>
 
