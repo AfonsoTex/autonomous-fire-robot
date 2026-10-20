@@ -13,6 +13,10 @@ Pi sees a flame with its own camera and a neural network trained for this projec
 (FireNet), it stops the car, aims a pan/tilt water nozzle at the flame and sprays short
 water pulses. Then the car carries on.
 
+The car itself (WiFi driving, video and line following) was built in the first phase
+and is documented in [esp32cam-rc-car](https://github.com/AfonsoTex/esp32cam-rc-car).
+This repository is the firefighting phase. What comes next is in [NEXT_PHASE.md](NEXT_PHASE.md).
+
 This is an experimental candle-scale prototype. Detection, aiming and water reach
 depend on the scene and the mechanical assembly; it is not a fire-safety device.
 
@@ -114,11 +118,13 @@ on the floor can reflect the flame. Details are in the
 
 - AI-Thinker ESP32-CAM (ESP32-S + OV2640)
 - 2× L293D H-bridges (four DC motors, two per side)
-- 3D-printed chassis (see [`hardware/`](hardware/))
-- 7.4 V LiPo battery + 5 V regulator
+- 3D-printed chassis
+- 7.4 V battery (2× 18650), 5 V step-down for the motor drivers, 5 V UBEC for the Raspberry Pi and servos
 - Raspberry Pi 5 with an OV5647 camera
-- Two SG90 servos for the camera/nozzle pan/tilt, powered from regulated 5 V
-- Water reservoir, pump, hose and transistor/MOSFET pump driver
+- Two SG90 servos for the camera/nozzle pan/tilt, powered from the UBEC 5 V output
+- Water reservoir, pump and hose, switched by an IRLZ44 MOSFET
+
+Wiring diagrams and the chassis files are in [`hardware/`](hardware/README.md).
 
 ## How to use
 
@@ -194,21 +200,17 @@ firmware/esp32-cam/main/  ESP32 firmware (main.ino) + config.h
 firmware/raspberry/       FireNet inference, browser video, aiming, pump, settings.h
 model_training/           FireNet annotation, training, evaluation and export
 server/                   PC server: video + gamepad control + line following
-hardware/                 3D chassis (STL to print, F3D source)
+hardware/                 wiring diagrams and 3D chassis (STL to print, F3D source)
 docs/                     photos and datasheets
+NEXT_PHASE.md             plan for the next version of the robot
 ```
 
 ## Demo
-
-**Manual control**
-
-<div align="center"><a href="https://www.youtube.com/watch?v=0vkdqZmBMSo"><img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/manual-control-youtube.jpg" width="500" alt="Manual control video"></a></div>
-
-**Autonomous line following**
-
-<div align="center"><a href="https://www.youtube.com/watch?v=jG8YLj0yXlU"><img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/line-following-youtube.jpg" width="500" alt="Line following video"></a></div>
 
 **Firefighting: line following, flame detection, aiming and water**
 
 <!-- Replace VIDEO_ID (both places) with the ID from the YouTube link: youtube.com/watch?v=VIDEO_ID -->
 <div align="center"><a href="https://www.youtube.com/watch?v=VIDEO_ID"><img src="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg" width="700" alt="Firefighting robot demo video"></a></div>
+
+The earlier videos of manual driving and line following are in
+[esp32cam-rc-car](https://github.com/AfonsoTex/esp32cam-rc-car).
