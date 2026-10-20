@@ -13,10 +13,10 @@ from model import FireNet
 from train import CHECKPOINT, get_boxes
 
 
-# Temporally smooths the alert: require detections in MINIMO of the last HISTORICO frames.
-HISTORICO = 5
+# Temporally smooths the alert: require detections in MIN_DETECTION_FRAMES of the last HISTORY_LENGTH frames.
+HISTORY_LENGTH = 5
 
-MINIMO = 3
+MIN_DETECTION_FRAMES = 3
 
 
 def preprocess(frame):
@@ -84,7 +84,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run FireNet on the PC webcam and optionally record video.")
     parser.add_argument("--camera", type=int, default=0,
                          help="camera index (0 = first/default camera)")
-    parser.add_argument("--threshold", type=float, default=0.4,
+    parser.add_argument("--threshold", type=float, default=train.CONFIDENCE_THRESHOLD,
                          help="minimum confidence required to draw a detection")
     parser.add_argument("--record", type=str, default=None,
                          help="record video to this file, e.g. room.mp4")
@@ -117,7 +117,7 @@ def main():
     print("Running. Press 'q' or Esc in the video window to exit.")
 
     # Keeps the latest results; deque automatically discards the oldest when full.
-    historico = deque(maxlen=HISTORICO)
+    detection_history = deque(maxlen=HISTORY_LENGTH)
 
     # Creates the video writer after the first frame, when the image dimensions are known.
     writer = None
@@ -131,38 +131,38 @@ def main():
                 break
 
             # Keeps a clean copy for training recordings before drawing detections.
-            limpo = frame.copy()
+            clean_frame = frame.copy()
 
             with torch.no_grad():
                 prediction = model(preprocess(frame))[0]
 
             # Converts grid logits to confidence scores and displays the highest score.
-            melhor = torch.sigmoid(prediction[0]).max().item()
+            highest_confidence = torch.sigmoid(prediction[0]).max().item()
 
             boxes = get_boxes(prediction)
 
-            historico.append(len(boxes) > 0)
+            detection_history.append(len(boxes) > 0)
 
-            # Requires detections in at least MINIMO recent frames to show a stable alert.
-            estavel = sum(historico) >= MINIMO
+            # Requires detections in at least MIN_DETECTION_FRAMES recent frames to show a stable alert.
+            stable_detection = sum(detection_history) >= MIN_DETECTION_FRAMES
 
             frame = draw_detections(frame, boxes)
 
-            status = f"FIRE DETECTED ({len(boxes)})" if estavel else "no fire"
-            color = (0, 0, 255) if estavel else (0, 200, 0)
+            status = f"FIRE DETECTED ({len(boxes)})" if stable_detection else "no fire"
+            color = (0, 0, 255) if stable_detection else (0, 200, 0)
             cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                         0.9, color, 2)
 
             # Displays the highest confidence and the detection threshold.
-            cv2.putText(frame, f"max {melhor:.2f}  threshold {args.threshold:.2f}"
-                        f"  {sum(historico)}/{len(historico)}",
+            cv2.putText(frame, f"max {highest_confidence:.2f}  threshold {args.threshold:.2f}"
+                        f"  {sum(detection_history)}/{len(detection_history)}",
                         (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         (255, 255, 0), 2)
 
             if args.record:
 
                 if writer is None:
-                    altura, largura = frame.shape[:2]
+                    height, width = frame.shape[:2]
 
                     # Uses 20 fps if the camera driver does not report a usable frame rate.
                     fps = capture.get(cv2.CAP_PROP_FPS)
@@ -173,12 +173,12 @@ def main():
                     codec = cv2.VideoWriter_fourcc(*"mp4v")
 
                     writer = cv2.VideoWriter(args.record, codec, fps,
-                                             (largura, altura))
+                                             (width, height))
 
                     print(f"Recording to {args.record} "
-                          f"({largura}x{altura}, {fps:.0f} fps)")
+                          f"({width}x{height}, {fps:.0f} fps)")
 
-                writer.write(frame if args.with_boxes else limpo)
+                writer.write(frame if args.with_boxes else clean_frame)
 
             cv2.imshow("FireNet - live detection", frame)
 

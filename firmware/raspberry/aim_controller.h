@@ -31,27 +31,38 @@ public:
     // depending on the servo's physical mounting and rotation direction.
 
 
-
-
-
     // Initial target confirmation:
     // update() coordinates the initial target confirmation and aiming:
     // 1. findMatchingFlame() chooses a flame and stores it in matchingFlame.
     // 2. Copy matchingFlame into selectedFlame to remember it for the next frame.
     // 3. rememberDetection(true) records that we found it in this frame.
-    // 4. If fewer than 4 recent frames confirmed it, return without aiming.
+    // 4. If the preset needs more confirmations, return without aiming.
     //    On the next frame, look for the same flame and repeat the confirmation.
-    // 5. Once confirmed, enter Track and call aimAtSelectedFlame()
-    //    to calculate the servo corrections.
+    // 5. Once confirmed, choose both aim coordinates from the flame's Y at home.
+    //    Keep that aim point while tracking; moving the camera changes the observed Y.
+    // 6. Enter Track and call aimAtSelectedFlame() to calculate servo corrections.
     bool update(const std::vector<Detection>& flames, double currentTime);
 
-    // True for one update only, after the selected flame stayed centered for 2 seconds.
+    // At home, remove targets that previously needed a servo command beyond its limit.
+    // After spraying, also reject new nearby detections for the departure window.
+    // main.cpp uses the result both to stop the car and to select the next flame.
+    // Keep all original detections for the video display.
+    std::vector<Detection> availableFlames(const std::vector<Detection>& flames,
+                                         double currentTime);
+
+    // True for one update only, after the preset's centred time and frame count are met.
     // main.cpp uses this request to start one pump pulse when --pump is enabled.
     bool pumpRequested = false;
 
     // main.cpp calls this when the timed pulse ends or is cancelled.
-    // The 10-second retry cooldown starts here, after the pump is off.
+    // The selected preset's retry cooldown starts here, after the pump is off.
     void pumpPulseFinished(double currentTime);
+
+    // Called only after the pump actually starts. Reject nearby new detections
+    // after spraying, while continuing to recognize the original target.
+    void pumpPulseStarted();
+    // Start the configured reflection-ignore window when movement is permitted again.
+    void movementPermitted(double currentTime);
 
     const char* status() const;
 
@@ -77,14 +88,35 @@ private:
     // Stores the flame we choose to follow.
     // Initialize all fields to known values (zero).
     Detection selectedFlame{};
+    // Remember where this flame was seen with the camera at home.
+    // Its position after aiming cannot be used to recognize it after returning.
+    Detection selectedFlameAtHome{};
+
+    // Compare the scene at home before aiming and after returning from a spray.
+    // Do not compare home coordinates with the camera's aimed view.
+    std::vector<Detection> flamesBeforeSprayAtHome;
+    bool filterSprayReflections = false;
+    double reflectionIgnoreUntil = -1;
+
+    struct IgnoredFlame {
+        Detection lastPosition;
+        double missingSince = -1;
+    };
+    // Follow these positions only while the camera is at home. Forget a target
+    // after it has been absent for a while; one missed frame does not erase it.
+    std::vector<IgnoredFlame> ignoredFlames;
+
+    // Choose both coordinates from the flame's Y position at home, after confirmation.
+    // Keep them unchanged while tracking, holding and retrying this target.
+    // A new target confirmed after returning home gets new aim coordinates.
+    float horizontalAimPosition = 0.5f;
+    float verticalAimPosition = 0.5f;
 
     // After selecting a flame, stores whether we keep finding it in the following frames.
     // When selecting another flame, clear this history and reset confirmedFrames to zero,
     // so detections of the previous flame do not count towards confirming the new one.
     std::deque<bool> recentDetections;
-    //
     int confirmedFrames = 0;
-    int missingFrames = 0;
     int centeredFrames = 0;
 
     // Start timing on the first centered observation; reset if it moves or disappears.
@@ -121,5 +153,6 @@ private:
     void holdCenteredFlame(double currentTime);
     int calculatePulseChange(float positionError, int direction) const;
     void beginReturn(double currentTime);
+    void ignoreSelectedFlameAndReturn(double currentTime);
     bool moveHome(double currentTime);
 };

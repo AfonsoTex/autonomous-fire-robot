@@ -12,10 +12,10 @@ Ort::SessionOptions options;
 Ort::Session session{nullptr};
 
 
-void carregarModelo(const std::string& caminho)
+void loadModel(const std::string& modelPath)
 {
     // Load the network structure and trained weights from the ONNX file.
-    session = Ort::Session(env, caminho.c_str(), options);
+    session = Ort::Session(env, modelPath.c_str(), options);
     const auto inputShape = session.GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
     const auto outputShape = session.GetOutputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
     if (inputShape != std::vector<int64_t>{1, 3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE} ||
@@ -25,7 +25,7 @@ void carregarModelo(const std::string& caminho)
 }
 
 
-std::vector<Prediction> prever(const cv::Mat& frame)
+std::vector<Prediction> predictFrame(const cv::Mat& frame)
 {
     if (frame.rows != MODEL_INPUT_SIZE || frame.cols != MODEL_INPUT_SIZE || frame.type() != CV_8UC3) {
         throw std::runtime_error("Expected a 180x180 RGB image.");

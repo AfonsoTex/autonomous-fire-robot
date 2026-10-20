@@ -20,7 +20,7 @@ typedef struct {
 } my_wifi_credentials_t;
 
 // TCP server, used ONLY in Access Point mode (initial WiFi setup).
-// With no known network, the ESP32 becomes the AP "ESP32_CAM_AFONSO".
+// With no usable saved network, create the AP named by AP_SSID.
 // You connect to it and send "WIFI:ssid,password\n" to this port to
 // store a new network in NVS flash.
 WiFiServer ESPserver(1883);
@@ -38,7 +38,7 @@ void setup_flash_memory() {
     }
 }
 
-// Debug only: prints every WiFi network stored in flash.
+// Debug output lists saved SSIDs, without exposing passwords.
 void dump_nvs_to_serial() {
     nvs_handle_t h;
     uint32_t count = 0;
@@ -56,7 +56,7 @@ void dump_nvs_to_serial() {
         my_wifi_credentials_t net;
         size_t size = sizeof(my_wifi_credentials_t);
         if (nvs_get_blob(h, key, &net, &size) == ESP_OK) {
-            Serial.printf("[NVS] [%lu] SSID: %s | PASS: %s\n", i, net.ssid, net.password);
+            Serial.printf("[NVS] [%lu] SSID: %s\n", i, net.ssid);
         }
     }
     nvs_close(h);
@@ -75,7 +75,7 @@ void enable_access_point() {
 // Fills the struct, reads the current count, saves the record under key
 // "wifi_<count>", then increments the count. Numbered keys let several
 // networks be stored and read back later by dump / the scan on boot.
-void Write_to_flash(char *ssid, char *password) {
+void save_wifi_credentials(char *ssid, char *password) {
     nvs_handle_t my_handle;
     my_wifi_credentials_t my_network;
     uint32_t count;
@@ -115,7 +115,7 @@ void Write_to_flash(char *ssid, char *password) {
 
 // Loop that runs in AP mode. Reads and handles the commands you send
 // from Packet Sender. Infinite: only the ESP.restart() below leaves it.
-// WIFI:ssid,password -> Write_to_flash() stores the network
+// WIFI:ssid,password -> save_wifi_credentials() stores the network
 // RESET:NOW          -> reboots the chip
 void loop_config_mode() {
     Serial.println("Entering infinite config loop...");
@@ -141,7 +141,7 @@ void loop_config_mode() {
                             if (virgula != NULL) {
                                 *virgula = '\0';
                                 char *password = virgula + 1;
-                                Write_to_flash(ssid, password);
+                                save_wifi_credentials(ssid, password);
                                 configClient.println("OK: Network saved.");
                             }
                         } else if (strncmp(buffer, "RESET:NOW", 9) == 0) {
@@ -159,7 +159,7 @@ void loop_config_mode() {
 }
 
 void wifi_setup_and_connect() {
-    // ── WiFi: try saved networks, or fall back to AP mode ─────────────
+    // WiFi: try saved networks, or fall back to AP mode
     nvs_handle_t my_handle_read;
     uint32_t count = 0;
     esp_err_t err = nvs_open("wifi_storage_id", NVS_READONLY, &my_handle_read);
@@ -167,7 +167,7 @@ void wifi_setup_and_connect() {
     // No stored networks: either the namespace was never created (no network
     // ever saved) or the wifi_count key is missing. Both mean zero networks,
     // so fall into AP mode and stay in the config loop until you send one.
-    // enable_access_point(): ESP32 creates its own network (ESP32_CAM_AFONSO),
+    // enable_access_point(): ESP32 creates the AP configured in config.h,
     //   takes IP 192.168.4.1, opens the TCP server on port 1883.
     // loop_config_mode(): infinite loop reading your commands, saves the
     //   network you send to flash. Never returns — only leaves on chip reset
@@ -231,10 +231,10 @@ void wifi_setup_and_connect() {
         }
 
         // WiFi is up: launch the camera streaming task pinned to Core 0,
-        // so heavy JPEG sending never blocks the motor commands on Core 1.
+        // separating capture from the motor loop. Both tasks still share Wi-Fi and memory.
         xTaskCreatePinnedToCore(
-            task_camara,    // function the task runs
-            "task_camara",  // name, debug only
+            camera_stream_task,    // function the task runs
+            "camera_stream_task",  // name, debug only
             10000,          // stack size in bytes
             NULL,           // no argument
             1,              // priority

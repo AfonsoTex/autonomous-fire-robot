@@ -4,6 +4,8 @@
 #include "aim_controller.h"
 #include "servos.h"
 #include "pump.h"
+#include "detection_filter.h"
+#include "car_control.h"
 #include <chrono>
 #include <stdexcept>
 
@@ -18,9 +20,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
-// Minimum confidence (0..1) needed to draw a flame box.
-constexpr float CONFIDENCE_THRESHOLD = 0.60f;
 
 constexpr unsigned short HTTP_PORT = 8080;
 
@@ -63,7 +62,7 @@ std::vector<Detection> getDetections(const std::vector<Prediction>& predictions)
             // The presence value is a logit, so it needs a sigmoid to become a confidence.
             float confidence = sigmoid(prediction.presence);
 
-            if (confidence <= CONFIDENCE_THRESHOLD) {
+            if (!std::isfinite(confidence) || confidence <= CONFIDENCE_THRESHOLD) {
                 continue;
             }
 
@@ -80,7 +79,9 @@ std::vector<Detection> getDetections(const std::vector<Prediction>& predictions)
             float height = sigmoid(prediction.height);
 
             // Ignore boxes whose center falls outside the image.
-            if (x < 0.0f || x > 1.0f || y < 0.0f || y > 1.0f) {
+            if (!std::isfinite(x) || !std::isfinite(y) ||
+                !std::isfinite(width) || !std::isfinite(height) ||
+                x < 0.0f || x > 1.0f || y < 0.0f || y > 1.0f) {
                 continue;
             }
 
@@ -95,7 +96,7 @@ std::vector<Detection> getDetections(const std::vector<Prediction>& predictions)
         }
     }
 
-    return detections;
+    return removeDuplicateDetections(detections);
 }
 
 
@@ -173,8 +174,8 @@ int main(int argc, char* argv[])
             homeTilt = readInteger(argv[3]);
             panDirection = readInteger(argv[4]);
             tiltDirection = readInteger(argv[5]);
-            if (homePan < PULSO_MIN_US || homePan > PULSO_MAX_US ||
-                homeTilt < PULSO_MIN_US || homeTilt > PULSO_MAX_US ||
+            if (homePan < MIN_PULSE_US || homePan > MAX_PULSE_US ||
+                homeTilt < MIN_PULSE_US || homeTilt > MAX_PULSE_US ||
                 std::abs(panDirection) != 1 || std::abs(tiltDirection) != 1)
                 throw std::invalid_argument("Home pulses must be 1000..2000 us; directions must be +1 or -1.");
             aimEnabled = true;
@@ -187,20 +188,33 @@ int main(int argc, char* argv[])
     std::signal(SIGINT, requestStop);
     std::signal(SIGTERM, requestStop);
 
+    // Keep the car stopped while starting the camera and model.
+    // The destructor also requests a stop on every early return below.
+    CarControl car;
+    if (aimEnabled) {
+        if (!car.initialize(currentTimeSeconds())) {
+            std::cerr << "Could not initialize the car movement permission output.\n";
+            return 1;
+        }
+        if (CAR_PERMISSION_GPIO < 0) {
+            std::cout << "Car GPIO is not configured (-1). Keep the car stationary; no permission signal is sent.\n";
+        }
+    }
+
     // 1. Open the camera.
     Camera camera;
 
-    if (!camera.abrir()) {
+    if (!camera.open()) {
         return 1;
     }
 
     // 2. Load the model.
     try {
-        carregarModelo(MODEL_PATH);
+        loadModel(MODEL_PATH);
     } catch (const std::exception& error) {
         std::cerr << "Could not load model " << MODEL_PATH << ": "
                   << error.what() << std::endl;
-        camera.libertar();
+        camera.release();
         return 1;
     }
 
@@ -213,26 +227,30 @@ int main(int argc, char* argv[])
     std::cout << "Video available at http://BaraoForrester.local:" << HTTP_PORT
               << "/ (or use the Raspberry Pi IP address). Press Ctrl+C to exit." << std::endl;
 
-    if (aimEnabled && (!inicializarServos(homePan, homeTilt))) {
+    if (aimEnabled && (!initializeServos(homePan, homeTilt))) {
         std::cerr << "Could not initialize servos. Check PWM configuration and permissions.\n";
-        terminarServos();
+        shutdownServos();
         return 1;
     }
     if (aimEnabled) {
         std::cout << "Aiming enabled: keep the car stationary during this test.\n";
+        if (FAST_TEST_MODE) {
+            std::cout << "Fast test mode enabled: shorter waits and servo speed level 4.\n";
+        }
     } else {
         std::cout << "Video only. Use --aim with calibrated values to enable servo movement.\n";
     }
 
     // Claim the pump output as LOW before processing any target.
     if (pumpEnabled) {
-        if (!inicializarBomba()) {
+        if (!initializePump()) {
             std::cerr << "Could not initialize the pump on GPIO 17.\n";
-            terminarBomba();
-            terminarServos();
+            shutdownPump();
+            shutdownServos();
             return 1;
         }
-        std::cout << "Pump enabled: 1-second pulses after centering, with limited retries and a cooldown.\n";
+        std::cout << "Pump enabled: " << PUMP_SPRAY_SECONDS
+                  << "-second pulses after centering, with limited retries and a cooldown.\n";
     }
     // Remember an outstanding pulse until lgpio reports that it has finished.
     bool pumpPulsePending = false;
@@ -243,8 +261,10 @@ int main(int argc, char* argv[])
     try {
         while (!stopRequested) {
 
+            // Do not use a frame whose capture began before the car settled.
+            const double frameCaptureStartedAt = currentTimeSeconds();
             // Capture a full-resolution RGB frame for inference and display.
-            if (!camera.lerFrame(frame)) {
+            if (!camera.readFrame(frame)) {
                 std::cerr << "Could not read another camera frame." << std::endl;
                 exitCode = 1;
                 break;
@@ -255,7 +275,7 @@ int main(int argc, char* argv[])
             try {
                 cv::Mat modelFrame;
                 cv::resize(frame, modelFrame, cv::Size(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE));
-                predictions = prever(modelFrame);
+                predictions = predictFrame(modelFrame);
             } catch (const std::exception& error) {
                 std::cerr << "Inference error: " << error.what() << std::endl;
                 exitCode = 1;
@@ -266,41 +286,67 @@ int main(int argc, char* argv[])
 
             if (aimEnabled) {
                 const double now = currentTimeSeconds();
+                // Filter unreachable targets and new nearby post-spray detections
+                // before they can stop the car or become an aiming target.
+                // Keep the original model predictions visible in the video.
+                std::vector<Detection> availableDetections = aim.availableFlames(detections, now);
 
                 // Start the retry cooldown after the real pulse ends, not when it starts.
                 if (pumpEnabled && pumpPulsePending && !pumpIsRunning()) {
                     aim.pumpPulseFinished(currentTimeSeconds());
                     pumpPulsePending = false;
+                    std::cout << "Water pulse completed.\n";
                 }
 
-                bool positionChanged = aim.update(detections, now);
+                bool aimingBusy = aim.state != AimController::State::Search;
+                if (pumpPulsePending) {
+                    aimingBusy = true;
+                }
+                if (!car.update(!availableDetections.empty(), aimingBusy, now)) {
+                    throw std::runtime_error("Could not update the car movement permission.");
+                }
+                if (car.isMovementAllowed()) {
+                    aim.movementPermitted(now);
+                }
 
-                // Stop spraying before moving the servos, or if the target disappears.
-                if (pumpEnabled && aim.state != AimController::State::Hold) {
-                    if (!definirBomba(false)) {
-                        throw std::runtime_error("Could not stop the pump.");
+                // Stopping the car comes first. Only frames captured after settling
+                // may confirm the target and supply its initial Y.
+                // During the configured pulse, keep both servos still. A missed
+                // detection or small aiming error must not cut the pulse short.
+                // Video/inference continue; lgpio turns the pump off independently.
+                bool positionChanged = false;
+                aim.pumpRequested = false;
+                if (!pumpPulsePending) {
+                    if (car.readyToAim(frameCaptureStartedAt)) {
+                        positionChanged = aim.update(availableDetections, now);
                     }
-                    if (pumpPulsePending) {
-                        aim.pumpPulseFinished(currentTimeSeconds());
-                        pumpPulsePending = false;
+                }
+
+                // Keep the output off outside Hold, but never cancel an active
+                // pulse for a detection change. Errors and shutdown still stop it.
+                if (pumpEnabled && !pumpPulsePending && aim.state != AimController::State::Hold) {
+                    if (!setPumpEnabled(false)) {
+                        throw std::runtime_error("Could not stop the pump.");
                     }
                 }
                 if (positionChanged) {
-                    bool panMoved = definirPulso(GPIO_PAN, aim.pan);
-                    bool tiltMoved = definirPulso(GPIO_TILT, aim.tilt);
+                    bool panMoved = setServoPulse(GPIO_PAN, aim.pan);
+                    bool tiltMoved = setServoPulse(GPIO_TILT, aim.tilt);
                     if (!panMoved || !tiltMoved) {
                         throw std::runtime_error("Servo command failed; stopping aiming.");
                     }
                 }
 
                 // The controller enforces the attempt limit and retry cooldown.
-                // lgpio turns the pump off after one second without pausing capture.
+                // lgpio turns the pump off after PUMP_SPRAY_SECONDS without pausing capture.
                 if (pumpEnabled && aim.pumpRequested) {
                     if (!startPumpPulse()) {
                         throw std::runtime_error("Could not start the pump pulse.");
                     }
                     pumpPulsePending = true;
-                    std::cout << "Water pulse started: 1 second.\n";
+                    aim.pumpPulseStarted();
+                    std::cout << "Water pulse started: " << PUMP_SPRAY_SECONDS
+                              << " seconds.\n";
                 }
             }
 
@@ -314,7 +360,9 @@ int main(int argc, char* argv[])
                 aimingStatus = aim.status();
             }
             if (pumpEnabled && pumpIsRunning()) {
-                aimingStatus = "Spraying (1 second)";
+                std::ostringstream sprayStatus;
+                sprayStatus << "Spraying (" << PUMP_SPRAY_SECONDS << " s)";
+                aimingStatus = sprayStatus.str();
             }
             cv::putText(display, aimingStatus, cv::Point(10, 25),
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
@@ -333,11 +381,16 @@ int main(int argc, char* argv[])
         exitCode = 1;
     }
 
+    // Stop the car before shutting down video and actuator outputs.
+    if (!car.stop()) {
+        std::cerr << "Could not clear the car movement permission.\n";
+        exitCode = 1;
+    }
     // Stop browser connections and release the camera.
-    if (pumpEnabled) terminarBomba();
-    if (aimEnabled) terminarServos();
+    if (pumpEnabled) shutdownPump();
+    if (aimEnabled) shutdownServos();
     server.stop();
-    camera.libertar();
+    camera.release();
 
     return exitCode;
 }
