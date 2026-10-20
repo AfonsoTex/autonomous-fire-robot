@@ -16,7 +16,8 @@
 - [10. The refill station](#10-the-refill-station)
 - [11. The mission](#11-the-mission)
 - [12. Materials](#12-materials)
-- [13. Suggested order](#13-suggested-order)
+- [13. Estimated cost](#13-estimated-cost)
+- [14. Suggested order](#14-suggested-order)
 
 ## 1. Where the robot is today
 
@@ -194,7 +195,30 @@ With a map, a water level and a station, the robot’s behaviour becomes a missi
 
 Choose the exact parts after checking current availability, voltages and Linux/ROS 2 support.
 
-## 13. Suggested order
+## 13. Estimated cost
+
+Approximate prices in euros for the new parts only, from typical online shops (cheaper from AliExpress, dearer from European distributors). The Raspberry Pi 5, servos, pump and cameras already on the robot are not counted.
+
+| Item | Approx. price |
+| --- | --- |
+| 2D LiDAR (LD19 / RPLIDAR C1) | 70 – 110 € |
+| IMU (MPU-6050 or BNO085) | 5 – 30 € |
+| Thermal camera: MLX90640 | 50 – 80 € |
+| Thermal camera: FLIR Lepton 3.5 with breakout (instead of MLX90640) | 250 – 350 € |
+| 4 gear motors with encoders (JGA25-370) | 40 – 60 € |
+| 2 motor drivers (TB6612FNG / DRV8833) | 5 – 10 € |
+| Motor microcontroller (ESP32-S3 / RP2040) | 5 – 15 € |
+| 2 water level sensors (XKC-Y25) | 10 – 20 € |
+| Custom PCB (5 boards) + components and connectors | 35 – 70 € |
+| Chassis material (PETG, aluminium plate, screws) | 25 – 50 € |
+| Refill station (tank, 12 V solenoid valve, ESP32, power supply, dock sensor) | 40 – 60 € |
+| Larger 2S battery with BMS | 25 – 50 € |
+| Wires, connectors and small parts | 20 – 30 € |
+| Optional: NoIR camera + IR LEDs, current sensors, flow sensor | 35 – 65 € |
+
+**Total:** about **330 – 590 €** with the MLX90640 thermal sensor and without the optional items; about **650 – 920 €** with the FLIR Lepton and everything optional. Prices change often; check them before ordering.
+
+## 14. Suggested order
 
 | Step | Work | Why at this point |
 | --- | --- | --- |
