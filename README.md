@@ -40,7 +40,7 @@ target → aim → spray → return the camera home → let the car move again.
 | **PC (offline)** | Annotating data, training and exporting FireNet | [`model_training/`](model_training/README.md) |
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/architecture.svg" width="860" alt="How the PC, ESP32-CAM and Raspberry Pi work together">
+  <img src="docs/architecture.svg" width="860" alt="How the PC, ESP32-CAM and Raspberry Pi work together">
 </div>
 
 The ESP32 sends its camera to the PC; the PC decides how to drive and sends the

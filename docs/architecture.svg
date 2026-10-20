@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#adbac7"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f47067"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="960" height="470" rx="18" fill="#22272e"/>
+
+  <!-- Gamepad -->
+  <rect x="30" y="72" width="150" height="70" rx="10" fill="#2d333b" stroke="#768390"/>
+  <text x="105" y="104" text-anchor="middle" font-size="16" font-weight="600" fill="#e6edf3">Xbox gamepad</text>
+  <text x="105" y="125" text-anchor="middle" font-size="13" fill="#adbac7">the driver</text>
+  <line x1="180" y1="107" x2="262" y2="107" stroke="#adbac7" stroke-width="2"/>
+  <text x="221" y="98" text-anchor="middle" font-size="12" fill="#adbac7">USB</text>
+
+  <!-- PC -->
+  <rect x="265" y="50" width="230" height="114" rx="12" fill="#1c2c45" stroke="#539bf5" stroke-width="2"/>
+  <text x="380" y="84" text-anchor="middle" font-size="18" font-weight="700" fill="#8cc2ff">PC</text>
+  <text x="380" y="108" text-anchor="middle" font-size="13" fill="#cdd9e5">decides how to drive:</text>
+  <text x="380" y="127" text-anchor="middle" font-size="13" fill="#cdd9e5">gamepad or line following</text>
+
+  <!-- ESP32 -->
+  <rect x="680" y="50" width="250" height="114" rx="12" fill="#3a2a17" stroke="#f0883e" stroke-width="2"/>
+  <text x="805" y="84" text-anchor="middle" font-size="18" font-weight="700" fill="#ffb26b">ESP32-CAM</text>
+  <text x="805" y="108" text-anchor="middle" font-size="13" fill="#cdd9e5">front camera + wheels</text>
+  <text x="805" y="127" text-anchor="middle" font-size="13" fill="#cdd9e5">(drives the motors)</text>
+
+  <!-- PC <-> ESP32 -->
+  <line x1="497" y1="88" x2="676" y2="88" stroke="#adbac7" stroke-width="2"/>
+  <text x="587" y="79" text-anchor="middle" font-size="13" fill="#e6edf3">drive commands</text>
+  <line x1="678" y1="132" x2="499" y2="132" stroke="#adbac7" stroke-width="2"/>
+  <text x="587" y="152" text-anchor="middle" font-size="13" fill="#e6edf3">camera video</text>
+  <text x="587" y="112" text-anchor="middle" font-size="11" fill="#909dab">WiFi</text>
+
+  <!-- Raspberry Pi -->
+  <rect x="680" y="300" width="250" height="114" rx="12" fill="#3d2224" stroke="#f47067" stroke-width="2"/>
+  <text x="805" y="334" text-anchor="middle" font-size="18" font-weight="700" fill="#ff9b94">Raspberry Pi 5</text>
+  <text x="805" y="358" text-anchor="middle" font-size="13" fill="#cdd9e5">own camera + FireNet</text>
+  <text x="805" y="377" text-anchor="middle" font-size="13" fill="#cdd9e5">(finds and fights flames)</text>
+
+  <!-- stop wire -->
+  <line x1="805" y1="298" x2="805" y2="168" stroke="#f47067" stroke-width="2.5" stroke-dasharray="7 5"/>
+  <rect x="815" y="214" width="128" height="40" rx="6" fill="#22272e"/>
+  <text x="821" y="231" font-size="13" font-weight="600" fill="#f47067">wire: GO / STOP</text>
+  <text x="821" y="248" font-size="12" fill="#adbac7">stops the car on fire</text>
+
+  <!-- outputs -->
+  <rect x="300" y="248" width="200" height="50" rx="10" fill="#2d333b" stroke="#768390"/>
+  <text x="400" y="279" text-anchor="middle" font-size="14" fill="#e6edf3">Pan/tilt servos (aim)</text>
+  <rect x="300" y="322" width="200" height="50" rx="10" fill="#2d333b" stroke="#768390"/>
+  <text x="400" y="353" text-anchor="middle" font-size="14" fill="#e6edf3">Water pump (spray)</text>
+  <rect x="300" y="396" width="200" height="50" rx="10" fill="#2d333b" stroke="#768390"/>
+  <text x="400" y="427" text-anchor="middle" font-size="14" fill="#e6edf3">Browser (live video)</text>
+
+  <path d="M678,330 L600,330 L600,273 L504,273" fill="none" stroke="#adbac7" stroke-width="2"/>
+  <line x1="678" y1="347" x2="504" y2="347" stroke="#adbac7" stroke-width="2"/>
+  <path d="M678,384 L600,384 L600,421 L504,421" fill="none" stroke="#adbac7" stroke-width="2"/>
+  <text x="610" y="415" font-size="11" fill="#909dab">WiFi</text>
+  <polygon points="264,107 253,101 253,113" fill="#adbac7"/>
+  <polygon points="678,88 667,82 667,94" fill="#adbac7"/>
+  <polygon points="497,132 508,126 508,138" fill="#adbac7"/>
+  <polygon points="805,166 799,177 811,177" fill="#f47067"/>
+  <polygon points="502,273 513,267 513,279" fill="#adbac7"/>
+  <polygon points="502,347 513,341 513,353" fill="#adbac7"/>
+  <polygon points="502,421 513,415 513,427" fill="#adbac7"/>
+</svg>
