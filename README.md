@@ -31,20 +31,13 @@ target → aim → spray → return the camera home → let the car move again.
 | Board | Job | Code |
 | --- | --- | --- |
 | **ESP32-CAM** | Streams the front camera to the PC and drives the motors | [`firmware/esp32-cam/`](firmware/esp32-cam/README.md) |
-| **PC** | Gamepad, line-following vision and steering | [`server/`](server/unified_python_server%20-%20UDP.py) |
+| **PC** | Gamepad, line-following vision and steering | [`server/`](server/README.md) |
 | **Raspberry Pi 5** | Flame detection, car stop, pan/tilt aiming, pump, browser video | [`firmware/raspberry/`](firmware/raspberry/README.md) |
 | **PC (offline)** | Annotating data, training and exporting FireNet | [`model_training/`](model_training/README.md) |
 
-```mermaid
-flowchart LR
-    GP["Xbox gamepad"] -->|USB| PC["PC<br/>line following + driving"]
-    ESP["ESP32-CAM<br/>front camera + motors"] -->|"video (WiFi, UDP)"| PC
-    PC -->|"drive commands (WiFi, UDP)"| ESP
-    PI["Raspberry Pi 5<br/>own camera + FireNet"] -->|"wire: drive / stop"| ESP
-    PI --> SV["Pan/tilt servos"]
-    PI --> PU["Water pump"]
-    PI -->|"video (WiFi, HTTP)"| BR["Browser"]
-```
+<div align="center">
+  <img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/architecture.svg" width="860" alt="How the PC, ESP32-CAM and Raspberry Pi work together">
+</div>
 
 The ESP32 sends its camera to the PC; the PC decides how to drive and sends the
 commands back. The Raspberry Pi watches for flames with its own camera. While it sees
@@ -121,7 +114,7 @@ on the floor can reflect the flame. Details are in the
 
 - AI-Thinker ESP32-CAM (ESP32-S + OV2640)
 - 2× L293D H-bridges (four DC motors, two per side)
-- 3D-printed chassis (see `hardware/`)
+- 3D-printed chassis (see [`hardware/`](hardware/))
 - 7.4 V LiPo battery + 5 V regulator
 - Raspberry Pi 5 with an OV5647 camera
 - Two SG90 servos for the camera/nozzle pan/tilt, powered from regulated 5 V
@@ -209,11 +202,11 @@ docs/                     photos and datasheets
 
 **Manual control**
 
-<div align="center"><a href="https://www.youtube.com/watch?v=0vkdqZmBMSo"><img src="https://img.youtube.com/vi/0vkdqZmBMSo/hqdefault.jpg" width="500" alt="Manual control video"></a></div>
+<div align="center"><a href="https://www.youtube.com/watch?v=0vkdqZmBMSo"><img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/manual-control-youtube.jpg" width="500" alt="Manual control video"></a></div>
 
 **Autonomous line following**
 
-<div align="center"><a href="https://www.youtube.com/watch?v=jG8YLj0yXlU"><img src="https://img.youtube.com/vi/jG8YLj0yXlU/hqdefault.jpg" width="500" alt="Line following video"></a></div>
+<div align="center"><a href="https://www.youtube.com/watch?v=jG8YLj0yXlU"><img src="https://raw.githubusercontent.com/AfonsoTex/esp32cam-firefighter/readme-assets/line-following-youtube.jpg" width="500" alt="Line following video"></a></div>
 
 **Firefighting: line following, flame detection, aiming and water**
 
