@@ -134,19 +134,19 @@ void motor_logic(float speed, float steering) {
 
 bool process_movement_command(const char* data) {
     float move = 0.0;
-    float direc = 0.0;
+    float steer = 0.0;
     char extra;
 
     // Read exactly two numbers. Trailing whitespace is allowed, extra text is not.
-    if (sscanf(data, "MOV:%f,DIR:%f %c", &move, &direc, &extra) != 2) {
+    if (sscanf(data, "MOV:%f,DIR:%f %c", &move, &steer, &extra) != 2) {
         return false;
     }
-    if (!std::isfinite(move) || !std::isfinite(direc) ||
-        move < -1 || move > 1 || direc < -1 || direc > 1) {
+    if (!std::isfinite(move) || !std::isfinite(steer) ||
+        move < -1 || move > 1 || steer < -1 || steer > 1) {
         return false;
     }
     requestedSpeed = move;
-    requestedSteering = direc;
+    requestedSteering = steer;
     commandReceived = true;
     return true;
 }
