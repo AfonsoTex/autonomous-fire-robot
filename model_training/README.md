@@ -22,7 +22,6 @@ Raspberry program always use the same values. Restart Python after editing it.
 | `annotate_images.py` | Opens a video, extracts images, lets you draw flame boxes, and sends images and labels to the dataset when you finalize the session. Can resume a session. |
 | `train.py` | Updates the cache, trains for `EPOCHS` epochs and saves the best model to `firenet_grid.pt`. Resumes saved weights unless `--fresh` is given. |
 | `view_results.py` | Reports validation performance and saves images with predictions (green) and annotations (red) to `results/validation_predictions/`. |
-| `detect_camera.py` | Live webcam predictions with the PyTorch model. `--record` saves video. |
 | `model_converter.py` | Converts `firenet_grid.pt` to `firenet.onnx` for the Raspberry Pi. |
 | `extract_frames.py` | Extracts images from a video. Optional: the annotator already calls it. |
 | `build_cache.py` | Prepares 180×180 images and labels to speed up training. Optional: training does it automatically. |
@@ -146,7 +145,7 @@ the confidence threshold and NMS come from `settings.h`.
 
 ## Evaluation and detection settings
 
-- `CONFIDENCE_THRESHOLD` decides which predictions count as detections, in evaluation, webcam detection and on the Raspberry. It does not change training.
+- `CONFIDENCE_THRESHOLD` decides which predictions count as detections, in evaluation and on the Raspberry. It does not change training.
 - NMS removes overlapping duplicate boxes. It does not remove isolated false positives such as reflections in another place, and it can merge two flames whose boxes overlap strongly.
 - The score matches predicted and annotated flame centres (within `MAX_DISTANCE` pixels), not simple image accuracy.
 - `MEASURE_TRAIN = true` also scores the training split, useful to compare with validation.
@@ -185,12 +184,6 @@ larger model.
 ## Optional tools
 
 ```powershell
-# Webcam predictions; press Q or Esc to exit
-.\.venv\Scripts\python.exe model_training/detect_camera.py
-
-# Record clean video while showing predictions (add --with-boxes to record the boxes)
-.\.venv\Scripts\python.exe model_training/detect_camera.py --record session.mp4
-
 # Extract images without the annotator
 .\.venv\Scripts\python.exe model_training/extract_frames.py session.mp4 --every 60
 
