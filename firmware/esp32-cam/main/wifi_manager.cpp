@@ -177,8 +177,8 @@ void wifi_setup_and_connect() {
         enable_access_point();
         loop_config_mode();
     } else {
-        int numero_redes_ar = WiFi.scanNetworks();
-        bool conectou = false;
+        int network_count = WiFi.scanNetworks();
+        bool connected = false;
         my_wifi_credentials_t net;                    // buffer for each network read from flash
         size_t size = sizeof(my_wifi_credentials_t);
 
@@ -186,7 +186,7 @@ void wifi_setup_and_connect() {
         // Outer loop: networks currently in range (i). Inner loop: networks
         // saved in flash (j, count of them). For each network in range, look
         // for a saved one with the same SSID; on a match, try to connect.
-        for (int i = 0; i < numero_redes_ar && !conectou; i++) {
+        for (int i = 0; i < network_count && !connected; i++) {
             for (uint32_t j = 0; j < count; j++) {
 
                 // Build the NVS key for saved network j: "wifi_0", "wifi_1", ...
@@ -209,7 +209,7 @@ void wifi_setup_and_connect() {
 
                     if (WiFi.status() == WL_CONNECTED) {
                         Serial.printf("\nConnected to: %s\n", net.ssid);
-                        conectou = true;
+                        connected = true;
                     } else {
                         Serial.printf("\nFailed: %s\n", net.ssid);
                         WiFi.disconnect();
@@ -224,7 +224,7 @@ void wifi_setup_and_connect() {
 
         // none of the saved networks was in range or accepted the connection:
         // fall back to AP mode, same as the no-networks case above.
-        if (!conectou) {
+        if (!connected) {
             Serial.println("All networks failed. Fallback mode.");
             enable_access_point();
             loop_config_mode();
