@@ -12,12 +12,14 @@
 - [6. Knowing the wheels really turn](#6-knowing-the-wheels-really-turn)
 - [7. A PCB instead of wires](#7-a-pcb-instead-of-wires)
 - [8. A chassis that does not bend](#8-a-chassis-that-does-not-bend)
-- [9. Water level](#9-water-level)
-- [10. The refill station](#10-the-refill-station)
-- [11. The mission](#11-the-mission)
-- [12. Materials](#12-materials)
-- [13. Estimated cost](#13-estimated-cost)
-- [14. Suggested order](#14-suggested-order)
+- [9. Vibration and a stabilised camera](#9-vibration-and-a-stabilised-camera)
+- [10. Spraying while driving](#10-spraying-while-driving)
+- [11. Water level](#11-water-level)
+- [12. The refill station](#12-the-refill-station)
+- [13. The mission](#13-the-mission)
+- [14. Materials](#14-materials)
+- [15. Estimated cost](#15-estimated-cost)
+- [16. Suggested order](#16-suggested-order)
 
 ## 1. Where the robot is today
 
@@ -41,7 +43,9 @@ Building it showed clearly what the next version has to change. Each section bel
 | To turn left it stops the left motors and drives the right ones | Wide turns, no turning on the spot, struggles in sharp corners | Independent direction per side, or real steering (section 5) |
 | The car often got stuck with the motors on | As the battery drains, the same PWM no longer moves the car | Wheel encoders and closed-loop speed control (section 6) |
 | FireNet sees reflections of the flame on wet floors | After spraying, the robot stops again for a reflection | A thermal camera to confirm real heat (section 4) |
-| The robot does not know how much water it has | It can spray an empty tank | A water level sensor and a refill station (sections 9 and 10) |
+| The robot does not know how much water it has | It can spray an empty tank | A water level sensor and a refill station (sections 11 and 12) |
+| The car vibrates a lot while driving | The camera shakes: blurred images, missed or false detections, and a moving aim | Damping, and a camera stabilised with a gyroscope and servos (section 9) |
+| It stops for every flame before spraying | Slow patrols; every flame costs a full stop, aim and restart | Spray while driving (section 10) |
 | It needs light to work | Line following and FireNet fail in the dark | LiDAR for SLAM, infrared or thermal vision for fire (sections 3 and 4) |
 
 ## 3. Navigation: from following a line to SLAM
@@ -140,7 +144,53 @@ The printed chassis bends in the middle because the heaviest parts — battery, 
 - Print in PETG or nylon instead of PLA, or use an aluminium or carbon plate as the base with printed parts on top.
 - Check the design with a simple load simulation in Fusion 360 before printing.
 
-## 9. Water level
+## 9. Vibration and a stabilised camera
+
+The car shakes a lot while it drives, and the camera shakes with it. The images blur, small flames are missed or appear in the wrong place, and the aim moves even when the servos do not. This has two parts: make the car vibrate less, and keep the camera still when it still does.
+
+### Vibrating less
+
+- Mount the camera and the nozzle on **rubber dampers** (silicone grommets or anti-vibration balls, like those used on drone cameras), not screwed straight to the chassis.
+- A **stiffer chassis** (section 8) vibrates less than a plate that bends in the middle.
+- Check that the **wheels run true** and are tight on their shafts; a wobbling wheel shakes the whole car on every turn.
+- Softer tyres absorb small bumps from the floor.
+- **Smoother motor control:** with encoders and a speed loop (section 6) the motors no longer jump between stopped and full power, which is a large part of the shaking. A higher PWM frequency (around 20 kHz with a MOSFET driver) also makes the motors run smoother and quieter.
+
+### A camera that always looks the same way
+
+A **gimbal** keeps the camera pointing in the same direction while the car moves under it. An IMU (gyroscope and accelerometer) on the camera mount measures how the mount tilts and turns, and the motors immediately turn the camera the opposite way. It is the same principle as the stabilisers used for phones and drones.
+
+| Option | How it works | Notes |
+| --- | --- | --- |
+| IMU + the current servos | The Pi reads the IMU and corrects pan and tilt in software | Cheapest, and reuses the pan/tilt already on the robot. SG90 servos are slow and have play, so they can only cancel slow movements, such as tilting on a slope, not fast vibration. |
+| IMU + metal-gear digital servos (e.g. MG90S) | Same, with faster and more precise servos | Better, still simple. The fastest shaking still gets through. |
+| Brushless gimbal (2 or 3 axes, with its own controller board) | A dedicated controller reads its IMU hundreds of times per second and drives brushless motors | Recommended for real stabilisation. The Pi only says where to point; the gimbal holds that direction by itself. |
+
+**Recommendation:** dampers first, because they are cheap and remove the fast vibration that no servo can follow. Then a brushless gimbal carrying both the camera and the nozzle, so that aiming and stabilisation become one system: the Pi chooses the direction, the gimbal keeps it.
+
+## 10. Spraying while driving
+
+Today the robot stops for every flame, settles, aims, sprays and only then drives on. In the next phase the goal is to keep moving during the search: when a flame is confirmed, the robot sprays it while it drives past, and only stops if it keeps missing.
+
+### What makes it possible
+
+- A **stabilised turret** (section 9): the nozzle has to stay on target while the chassis moves and shakes under it.
+- **Knowing how the robot moves:** encoders and the IMU give its speed and rotation, and SLAM gives its position, so the aim can compensate for the car’s own movement instead of chasing the flame.
+- **Leading the target:** the water takes a moment to reach the flame (about 0.3 s at 1 m, from the jet model in the report). During that time the car keeps moving, so the nozzle must point where the flame will be when the water arrives, not where it is now.
+- **Flame position on the map:** with the LiDAR distance and the camera direction, each flame gets a fixed position in the room. Aiming at a fixed point on the map is much easier than aiming at a point in a moving image.
+- **The thermal camera** (section 4) to confirm hits: a flame that is out stops being hot, which tells the robot whether to try again.
+
+### How the robot decides
+
+| Situation | Behaviour |
+| --- | --- |
+| Flame confirmed, clear shot | Slow down, track it with the turret and spray without stopping. |
+| Still burning after the pass | Turn back and try again, or stop and use the current stop-aim-spray method. |
+| Several flames in view | Spray the nearest first, then the next, without stopping between them. |
+
+> **Trade-off:** Spraying on the move is faster but less accurate than stopping. Keeping stop-and-aim as a fallback means the robot never gives up on a flame just because a moving shot missed.
+
+## 11. Water level
 
 | Sensor | What it measures | Notes |
 | --- | --- | --- |
@@ -151,7 +201,7 @@ The printed chassis bends in the middle because the heaviest parts — battery, 
 
 **Recommendation:** two capacitive sensors (low and full). They are reliable, have no moving parts and are enough for the mission logic: "full", "enough", "go and refill".
 
-## 10. The refill station
+## 12. The refill station
 
 A fixed station where the robot can refill its tank on its own:
 
@@ -160,20 +210,20 @@ A fixed station where the robot can refill its tank on its own:
 - **Filling:** the station has its own tank and a solenoid valve (or a small pump) above a funnel on the robot. A small ESP32 on the station opens the valve when the robot asks for it over WiFi, and closes it when the robot’s "full" sensor triggers.
 - **Optional later:** charging contacts (pogo pins) on the same dock so the robot can also charge.
 
-## 11. The mission
+## 13. The mission
 
 With a map, a water level and a station, the robot’s behaviour becomes a mission instead of a single reaction:
 
 | Situation | What the robot does |
 | --- | --- |
 | Patrolling | Follows a route through the map, looking for flames with the colour and thermal cameras. |
-| Flame confirmed, water available | Stops, aims, sprays, checks again, and continues the patrol. |
+| Flame confirmed, water available | Sprays while driving past (section 10); stops and aims only if it keeps missing. Then continues the patrol. |
 | Water low | Stops patrolling and plans a path to the refill station. |
 | Flame seen on the way to the station | Marks the flame’s position on the map (robot position plus the direction and distance from the camera and LiDAR) and keeps going to refill. |
 | After refilling | Goes to the marked flames first, nearest first, before resuming the patrol. |
 | Stuck or lost | Reports it and waits, instead of driving the motors indefinitely. |
 
-## 12. Materials
+## 14. Materials
 
 | Item | Purpose | Example |
 | --- | --- | --- |
@@ -191,11 +241,13 @@ With a map, a water level and a station, the robot’s behaviour becomes a missi
 | Chassis material | Stiffer base | PETG / nylon, or aluminium plate |
 | Station: tank, solenoid valve, ESP32, funnel | Refilling | 12 V solenoid valve, small ESP32 board |
 | Station: docking sensor and marker | Know the robot is in place | Limit switch or Hall sensor and magnet; printed AprilTag |
+| Rubber dampers | Isolate camera and nozzle from vibration | Silicone anti-vibration balls or grommets |
+| Gimbal | Keep camera and nozzle pointing at the target | 2/3-axis brushless gimbal with controller, or IMU + MG90S servos |
 | Battery | More capacity for LiDAR and Pi | Larger 2S pack with a BMS |
 
 Choose the exact parts after checking current availability, voltages and Linux/ROS 2 support.
 
-## 13. Estimated cost
+## 15. Estimated cost
 
 Approximate prices in euros for the new parts only, from typical online shops (cheaper from AliExpress, dearer from European distributors). The Raspberry Pi 5, servos, pump and cameras already on the robot are not counted.
 
@@ -213,12 +265,14 @@ Approximate prices in euros for the new parts only, from typical online shops (c
 | Chassis material (PETG, aluminium plate, screws) | 25 – 50 € |
 | Refill station (tank, 12 V solenoid valve, ESP32, power supply, dock sensor) | 40 – 60 € |
 | Larger 2S battery with BMS | 25 – 50 € |
+| Rubber dampers for camera and nozzle | 5 – 10 € |
+| Brushless gimbal with controller (or IMU + 2 MG90S servos: 10 – 20 €) | 30 – 70 € |
 | Wires, connectors and small parts | 20 – 30 € |
 | Optional: NoIR camera + IR LEDs, current sensors, flow sensor | 35 – 65 € |
 
-**Total:** about **330 – 590 €** with the MLX90640 thermal sensor and without the optional items; about **650 – 920 €** with the FLIR Lepton and everything optional. Prices change often; check them before ordering.
+**Total:** about **370 – 670 €** with the MLX90640 thermal sensor and without the optional items; about **690 – 1 000 €** with the FLIR Lepton and everything optional. Prices change often; check them before ordering.
 
-## 14. Suggested order
+## 16. Suggested order
 
 | Step | Work | Why at this point |
 | --- | --- | --- |
@@ -226,6 +280,8 @@ Approximate prices in euros for the new parts only, from typical online shops (c
 | 2 | Independent direction per side | Small change, needed for navigation |
 | 3 | LiDAR, IMU and SLAM with ROS 2 | Build and save a map, then drive to points on it |
 | 4 | Thermal camera and fusion with FireNet | Fixes reflections, adds night detection |
-| 5 | Water level sensors | Simple, and the mission needs them |
-| 6 | Refill station and the mission logic | Needs map, navigation and water level working |
-| 7 | PCB and new chassis | Once the parts are chosen and tested on protoboard |
+| 5 | Dampers and a stabilised camera/nozzle gimbal | Sharper images and a steady aim; needed before spraying on the move |
+| 6 | Water level sensors | Simple, and the mission needs them |
+| 7 | Refill station and the mission logic | Needs map, navigation and water level working |
+| 8 | Spraying while driving | Needs the gimbal, odometry and flame positions on the map |
+| 9 | PCB and new chassis | Once the parts are chosen and tested on protoboard |
