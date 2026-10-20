@@ -5,3 +5,4 @@ __pycache__/
 /Datasets/
 /model_training/results/
 /treino_modelo/resultados/
+.DS_Store
