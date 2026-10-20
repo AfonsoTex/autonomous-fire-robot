@@ -1,7 +1,7 @@
 # ESP32-CAM and Raspberry Pi Firefighting Robot
 
 <div align="center">
-  <img src="docs/robot.jpg" width="600" alt="The complete firefighting robot"><br>
+  <img src="docs/robot.jpg" width="420" alt="The complete firefighting robot"><br>
   <em>The complete robot: ESP32-CAM, Raspberry Pi 5, pan/tilt camera and water nozzle.</em>
 </div>
 
@@ -209,8 +209,7 @@ NEXT_PHASE.md / .pdf      plan for the next version of the robot
 
 **Firefighting: line following, flame detection, aiming and water**
 
-<!-- Replace VIDEO_ID (both places) with the ID from the YouTube link: youtube.com/watch?v=VIDEO_ID -->
-<div align="center"><a href="https://www.youtube.com/watch?v=VIDEO_ID"><img src="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg" width="700" alt="Firefighting robot demo video"></a></div>
+<div align="center"><a href="https://www.youtube.com/shorts/gP3Se-EKioY"><img src="docs/video-thumbnail.jpg" width="700" alt="Firefighting robot demo video"></a></div>
 
 The earlier videos of manual driving and line following are in
 [esp32cam-rc-car](https://github.com/AfonsoTex/esp32cam-rc-car).
