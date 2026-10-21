@@ -3,8 +3,11 @@
 This folder contains the tools to record, annotate, train, evaluate and export FireNet,
 the small neural network that detects flames on the Raspberry Pi.
 
-The dataset in `Datasets/` and generated files in `model_training/results/` stay
-local and are excluded from Git. On a new checkout, create a dataset with the
+The current model was trained on 4,922 images recorded with the robot's own camera
+(3,933 for training and 989 for validation), with 1,508 flames annotated by hand.
+
+The dataset in `Datasets/` (about 250 MB) and generated files in `model_training/results/`
+stay local and are excluded from Git. On a new checkout, create a dataset with the
 annotator before training; the cache is generated automatically.
 
 ## Settings
