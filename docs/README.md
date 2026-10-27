@@ -26,6 +26,6 @@ is organised below.
 
 ## Related project files
 
-- [Next phase](../NEXT_PHASE.pdf): planned improvements.
+- [Phase III objectives](../PHASE_III.pdf): goal and problems of this phase.
 - [Hardware guide](../hardware/README.md): wiring and chassis files.
 - [Project overview](../README.md): features, setup and demonstration.

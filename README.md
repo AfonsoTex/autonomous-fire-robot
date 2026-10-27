@@ -15,7 +15,8 @@ water pulses. Then the car carries on.
 
 The car itself (WiFi driving, video and line following) was built in the first phase
 and is documented in [esp32cam-rc-car](https://github.com/AfonsoTex/esp32cam-rc-car).
-This repository is the firefighting phase. What comes next is in [NEXT_PHASE.pdf](NEXT_PHASE.pdf).
+The firefighting phase (Phase II) is kept as it was in
+[esp32cam-firefighter](https://github.com/AfonsoTex/esp32cam-firefighter).
 
 This is an experimental candle-scale prototype. Detection, aiming and water reach
 depend on the scene and the mechanical assembly; it is not a fire-safety device.
@@ -27,7 +28,7 @@ depend on the scene and the mechanical assembly; it is not a fire-safety device.
 The project's engineering report brings together the design, electronics,
 software, flame detection and aiming system.
 
-[Browse supporting documentation](docs/README.md) · [Next phase](NEXT_PHASE.pdf)
+[Browse supporting documentation](docs/README.md) · [Phase III objectives](PHASE_III.pdf)
 
 ## What it does
 
@@ -211,7 +212,7 @@ model_training/           FireNet annotation, training, evaluation and export
 server/                   PC server: video + gamepad control + line following
 hardware/                 wiring diagrams and 3D chassis (STL to print, F3D source)
 docs/                     technical report, datasheets, photos and diagrams
-NEXT_PHASE.pdf            plan for the next version of the robot
+PHASE_III.pdf             goal and problems of Phase III
 ```
 
 ## Demo
