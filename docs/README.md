@@ -27,5 +27,7 @@ is organised below.
 ## Related project files
 
 - [Phase III objectives](../PHASE_III.pdf): goal and problems of this phase.
+- [Phase III solutions](../PHASE_III_SOLUTIONS.docx): how each Phase III problem is solved (in progress).
+- [SLAM and navigation](SLAM_and_Navigation.docx): how the robot maps the house, knows where it is and finds its way.
 - [Hardware guide](../hardware/README.md): wiring and chassis files.
 - [Project overview](../README.md): features, setup and demonstration.

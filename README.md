@@ -28,7 +28,7 @@ depend on the scene and the mechanical assembly; it is not a fire-safety device.
 The project's engineering report brings together the design, electronics,
 software, flame detection and aiming system.
 
-[Browse supporting documentation](docs/README.md) · [Phase III objectives](PHASE_III.pdf)
+[Browse supporting documentation](docs/README.md) · [Phase III objectives](PHASE_III.pdf) · [Phase III solutions](PHASE_III_SOLUTIONS.docx) · [SLAM and navigation](docs/SLAM_and_Navigation.docx)
 
 ## What it does
 
@@ -213,6 +213,7 @@ server/                   PC server: video + gamepad control + line following
 hardware/                 wiring diagrams and 3D chassis (Fusion 360 F3D source)
 docs/                     technical report, datasheets, photos and diagrams
 PHASE_III.pdf             goal and problems of Phase III
+PHASE_III_SOLUTIONS.docx  how each Phase III problem is solved (in progress)
 ```
 
 ## Demo
