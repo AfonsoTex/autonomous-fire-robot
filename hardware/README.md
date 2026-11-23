@@ -4,13 +4,12 @@ Wiring diagrams and the 3D-printed chassis (Fusion 360 source; export an STL fro
 
 | File | What it is |
 | --- | --- |
-| `raspberry_pump_servos.png` | Raspberry Pi 5, water pump, MOSFET and pan/tilt servos |
-| `motor_drivers_l293d.png` | The two L293D motor drivers, 5 V step-down and voltmeter |
+| `wiring_diagram.png` | Raspberry Pi 5, L293D motor drivers, power, water pump and pan/tilt servos |
 | `Chassis.f3d` | Chassis source (Fusion 360) |
 
 ## Raspberry Pi, pump and servos
 
-<div align="center"><img src="raspberry_pump_servos.png" width="900" alt="Raspberry Pi 5, pump and servo wiring"></div>
+<div align="center"><img src="wiring_diagram.png" width="1000" alt="Complete Raspberry Pi 5 wiring: power, L293D motor drivers, water pump and servos"></div>
 
 - **Battery:** 2× 18650 in series (2S, 7.4 V nominal, 8.4 V full), 2000 mAh.
 - **UBEC (7.4 V → 5 V):** feeds the Raspberry Pi through USB-C **and** both SG90 servos. The servos are never connected to the 7.4 V battery line: the SG90 is rated for 4.8–6 V.
@@ -20,8 +19,6 @@ Wiring diagrams and the 3D-printed chassis (Fusion 360 source; export an STL fro
 - **Ground:** battery, UBEC, MOSFET, servos, Pi (pin 14) and ESP32 share one ground.
 
 ## Motor drivers
-
-<div align="center"><img src="motor_drivers_l293d.png" width="700" alt="L293D motor driver wiring, top and bottom of the board"></div>
 
 - **Top:** the parts side. **Bottom:** the solder side, where the matching pins of the two L293D chips are joined so both chips receive the same signals.
 - The 5 V step-down feeds the logic supply of both L293D chips (pin 16) and the ESP32. The motors take the battery voltage on pin 8.
