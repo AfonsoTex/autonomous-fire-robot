@@ -17,7 +17,7 @@ This is the Phase III wiring, with the Raspberry Pi 5 controlling everything. It
 - **T-plug:** the only power connection between the batteries and the robot. With it unplugged, nothing after it is powered, including the voltmeter.
 - **Fuse:** a 15 A blade fuse on the positive wire, between the T-plug and the + Point. It cuts the batteries off if there is a short circuit.
 - **Voltmeter:** connected after the T-plug, so it does not drain the batteries while the robot is off. The minimum PWM that turns the motors rises as the battery drains.
-- **Pi UBEC (7.4 V → 5 V, 5 A):** feeds only the Raspberry Pi, through a USB-C cable. The LiDAR and the camera get their power from the Pi.
+- **Pi UBEC (7.4 V → 5 V, 5 A):** feeds the Raspberry Pi through a USB-C cable and the LiDAR straight from its output. The camera gets its power from the Pi.
 - **Servo UBEC (7.4 V → 5 V, 7 A):** feeds only the two MZ996 servos, on its own red wire from the + Point, so servo current peaks do not pull down the Pi's supply. Its output can be 5.25 V ± 0.5 V, so never connect it to the Pi.
 - **5 V step-down:** feeds the logic supply of both L293D chips (pin 16) and the two water level sensors. Never connect its output to the Pi's 5 V.
 - **Ground:** batteries, both UBECs, step-down, L293D chips, MOSFET, servos, encoders, IMUs, water level sensors and Pi share one ground.
@@ -42,12 +42,12 @@ This is the Phase III wiring, with the Raspberry Pi 5 controlling everything. It
 - **Encoder power:** 3.3 V from Pi pin 1 and ground from Pi pin 9. Never use 5 V, because the GPIO pins only tolerate 3.3 V.
 - **Encoder signals (A, B), with internal pull-ups:** motor 1 on GPIO22 and GPIO23, motor 2 on GPIO27 and GPIO4, motor 3 on GPIO5 and GPIO6, motor 4 on GPIO24 and GPIO25.
 - **IMUs (MPU6050, GY-521 modules):** one on the chassis and one on the tower, sharing the same I2C bus: SDA on GPIO2 (pin 3), SCL on GPIO3 (pin 5), 3.3 V from pin 17 and ground from pin 25. The chassis IMU leaves AD0 unconnected (address 0x68). The tower IMU has AD0 tied to 3.3 V (address 0x69). XDA, XCL and INT stay unconnected on both.
-- **LiDAR (RPLIDAR C1):** connects through its serial-to-USB adapter board to a USB port on the Pi. It uses no GPIO.
+- **LiDAR (RPLIDAR C1):** wired straight to the Pi's UART with the cable that comes with it, without the USB adapter board. 5 V from the Pi UBEC output (about 230 mA, 800 mA at start-up), ground to the common ground, LiDAR TX to GPIO15 (pin 10) and LiDAR RX to GPIO14 (pin 8). Its serial port is 3.3 V, 460800 baud.
 - **Camera (OV5647, 5 MP):** connects to a CAM/DISP connector on the Pi with a 30 cm ribbon, 22-pin on the Pi side and 15-pin on the camera side. It uses no GPIO.
 - **Water level sensors (two XKC-Y25-NPN):** glued outside the bottle, one low to know when to refill and one high to know when it is full. The plug is cut off and the wires are soldered: brown to 5 V, blue to ground (Pi pin 39), black (mode) to 5 V, yellow to the signal.
 - **Water sensor signal:** the yellow wire can reach 5 V and the GPIO pins only tolerate 3.3 V. Each sensor uses a divider: 10 kΩ from yellow to the GPIO and 18 kΩ from the GPIO to ground, which gives about 3.2 V with water and 0 V without. The bottom sensor goes to GPIO7 (pin 26) and the top one to GPIO8 (pin 24), with the internal pull-ups off.
 
-GPIO 9, 10, 11, 14 and 15 remain free.
+GPIO 9, 10 and 11 remain free.
 
 ## Things to check before trusting the wiring
 
